@@ -1,56 +1,58 @@
+version: "3.1"
 services:
+  filebeat:
+    labels:
+      co.elastic.logs/enabled: false
+    user: root
+    image: docker.elastic.co/beats/filebeat:7.14.0
+    command: filebeat -e -strict.perms=false
+    volumes:
+      - ./docker/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  elasticsearch:
+    labels:
+      co.elastic.logs/enabled: false
+    environment:
+      - discovery.type=single-node
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:9200/_cat/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 80
+    ports:
+      - 9200:9200
+
+  kibana:
+    labels:
+      co.elastic.logs/enabled: false
+    image: docker.elastic.co/kibana/kibana:7.14.0
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:5601/api/status"]
+      interval: 3s
+      timeout: 3s
+      retries: 80
+    ports:
+      - 5601:5601
+
   app:
+    image: ${DOCKER_REGISTRY-}webapp
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      kibana:
+        condition: service_healthy
     ports:
       - "8080:8080"
-    depends_on:
-      - kibana
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.1
-    volumes:
-      - elasticsearch:/usr/share/elasticsearch/data
-    environment:
-      discovery.type: single-node
-      xpack.security.enabled: false
-    ports:
-      - 9200:9200
-      - 9300:9300
-    restart: unless-stopped
-
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.6.1
-    user: root
-    volumes:
-      - ./docker/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - logstash
-    command: filebeat -e -strict.perms=false
-    restart: unless-stopped
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.6.1
-    environment:
-      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
-    ports:
-      - 5601:5601
-    depends_on:
-      - elasticsearch
-    restart: unless-stopped
-
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.6.1
-    volumes:
-      - ./docker/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-    ports:
-      - 5044:5044
-    depends_on:
-      - elasticsearch
-    restart: unless-stopped
-
-volumes:
-  elasticsearch:
+    labels:
+      co.elastic.logs/enabled: true
+      co.elastic.logs/json.keys_under_root: true
+      co.elastic.logs/json.overwrite_keys: true
+      co.elastic.logs/json.add_error_key: true
+      co.elastic.logs/json.expand_keys: true
