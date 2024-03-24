@@ -3,7 +3,9 @@ package main
 import (
 	"ElasticKibanaGrafanaJaeger/src/controllers"
 	"ElasticKibanaGrafanaJaeger/src/middlewares"
+	"ElasticKibanaGrafanaJaeger/src/models"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.elastic.co/ecszap"
 	"go.uber.org/zap"
@@ -13,29 +15,45 @@ import (
 
 func ConfigureServer() {
 
+	reg := prometheus.NewRegistry()
 	router := gin.Default()
 	logger := ConfigureLogging()
-	ConfigureMiddlewares(router, logger)
-	ConfigureEndpoints(router)
-	ConfigureMetrics(router)
+	metrics := ConfigureMetrics(reg)
+	ConfigureMiddlewares(router, logger, metrics)
+	ConfigureEndpoints(router, reg)
 	err := router.Run(":8080")
 	if err != nil {
 		log.Fatal("Couldn't start host")
 	}
 }
 
-func ConfigureMetrics(router *gin.Engine) {
-	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+func ConfigureMetrics(reg prometheus.Registerer) *models.Metrics {
+	m := &models.Metrics{
+		Requests: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "app",
+			Name:      "http_requests_count",
+			Help:      "Number of requests.",
+		}, []string{"method", "path"}),
+		Duration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace: "app",
+			Name:      "http_requests_duration",
+			Help:      "Duration of the request.",
+			Buckets:   []float64{0.1, 0.15, 0.2, 0.25, 0.3},
+		}, []string{"method", "status"}),
+	}
+	reg.MustRegister(m.Requests, m.Duration)
+	return m
 }
 
-func ConfigureMiddlewares(router *gin.Engine, logger *zap.Logger) {
+func ConfigureMiddlewares(router *gin.Engine, logger *zap.Logger, metrics *models.Metrics) {
 	router.Use(middlewares.Logging(logger))
-	router.Use(middlewares.Metrics)
+	router.Use(middlewares.Metrics(metrics))
 	router.Use(middlewares.Tracing)
 }
 
-func ConfigureEndpoints(router *gin.Engine) {
+func ConfigureEndpoints(router *gin.Engine, reg prometheus.Gatherer) {
 	router.GET("/helloWorld", controllers.GetHelloWorld)
+	router.GET("/metrics", gin.WrapH(promhttp.HandlerFor(reg, promhttp.HandlerOpts{})))
 }
 
 func ConfigureLogging() *zap.Logger {

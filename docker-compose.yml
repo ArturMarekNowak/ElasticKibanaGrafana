@@ -18,7 +18,7 @@ services:
       - discovery.type=single-node
     image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
     healthcheck:
-      test: ["CMD", "curl", "-s", "-f", "http://localhost:9200/_cat/health"]
+      test: [ "CMD", "curl", "-s", "-f", "http://localhost:9200/_cat/health" ]
       interval: 3s
       timeout: 3s
       retries: 80
@@ -33,7 +33,7 @@ services:
       elasticsearch:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-s", "-f", "http://localhost:5601/api/status"]
+      test: [ "CMD", "curl", "-s", "-f", "http://localhost:5601/api/status" ]
       interval: 3s
       timeout: 3s
       retries: 80
@@ -41,6 +41,12 @@ services:
       - 5601:5601
 
   app:
+    labels:
+      co.elastic.logs/enabled: true
+      co.elastic.logs/json.keys_under_root: true
+      co.elastic.logs/json.overwrite_keys: true
+      co.elastic.logs/json.add_error_key: true
+      co.elastic.logs/json.expand_keys: true
     image: ${DOCKER_REGISTRY-}webapp
     build:
       context: .
@@ -50,9 +56,24 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
-    labels:
-      co.elastic.logs/enabled: true
-      co.elastic.logs/json.keys_under_root: true
-      co.elastic.logs/json.overwrite_keys: true
-      co.elastic.logs/json.add_error_key: true
-      co.elastic.logs/json.expand_keys: true
+
+  prometheus:
+    image: prom/prometheus:v2.40.4
+    ports:
+      - 9090:9090
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:9.3.0
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./docker/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - grafana:/var/lib/grafana
+
+volumes:
+  grafana:
