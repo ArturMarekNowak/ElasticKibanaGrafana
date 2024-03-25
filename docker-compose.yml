@@ -48,6 +48,8 @@ services:
       co.elastic.logs/json.add_error_key: true
       co.elastic.logs/json.expand_keys: true
     image: ${DOCKER_REGISTRY-}webapp
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     build:
       context: .
       dockerfile: Dockerfile
@@ -74,6 +76,15 @@ services:
     volumes:
       - ./docker/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - grafana:/var/lib/grafana
+
+  jaeger:
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - 16686:16686
+      - 4317:4317
+      - 4318:4318
+    image: jaegertracing/all-in-one:latest
 
 volumes:
   grafana:
