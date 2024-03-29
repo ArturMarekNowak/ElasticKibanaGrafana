@@ -28,15 +28,20 @@ func ConfigureServer() {
 	router := gin.Default()
 	logger := ConfigureLogging()
 	metrics := ConfigureMetrics(reg)
-	otelShutdown, err := setupOTelSDK(ctx)
+	err := ConfigureTracing(ctx)
 	if err != nil {
 		return
 	}
-	defer func() {
-		err = errors.Join(err, otelShutdown(context.Background()))
-	}()
 	ConfigureMiddlewares(router, logger, metrics)
 	ConfigureEndpoints(router, reg)
+	srv, err, done := StartServer(router, err, ctx, stop)
+	if done {
+		return
+	}
+	err = srv.Shutdown(context.Background())
+}
+
+func StartServer(router *gin.Engine, err error, ctx context.Context, stop context.CancelFunc) (*http.Server, error, bool) {
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
@@ -53,17 +58,16 @@ func ConfigureServer() {
 
 	select {
 	case err = <-srvErr:
-		return
+		return nil, nil, true
 	case <-ctx.Done():
 		stop()
 	}
-
-	err = srv.Shutdown(context.Background())
+	return srv, err, false
 }
 
-func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
+func ConfigureTracing(ctx context.Context) (err error) {
 	var shutdownFuncs []func(context.Context) error
-	shutdown = func(ctx context.Context) error {
+	shutdown := func(ctx context.Context) error {
 		var err error
 		for _, fn := range shutdownFuncs {
 			err = errors.Join(err, fn(ctx))
@@ -86,6 +90,9 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	}
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
+	defer func() {
+		err = errors.Join(err, shutdown(context.Background()))
+	}()
 	return
 }
 
