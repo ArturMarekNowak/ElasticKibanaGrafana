@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"ElasticKibanaGrafanaJaeger/src/models"
+	"ElasticKibanaGrafana/src/models"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"strconv"

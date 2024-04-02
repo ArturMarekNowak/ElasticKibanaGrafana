@@ -1,9 +1,10 @@
 package main
 
 import (
-	"ElasticKibanaGrafanaJaeger/src/controllers"
-	"ElasticKibanaGrafanaJaeger/src/middlewares"
-	"ElasticKibanaGrafanaJaeger/src/models"
+	"ElasticKibanaGrafana/src/controllers"
+	"ElasticKibanaGrafana/src/middlewares"
+	"ElasticKibanaGrafana/src/models"
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -12,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 )
 
 func ConfigureServer() {
@@ -25,15 +27,25 @@ func ConfigureServer() {
 }
 
 func StartServer(router *gin.Engine) {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
 	}
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatalf("Couldn't start host: %s\n", err)
 		}
 	}()
+
+	select {
+	case <-ctx.Done():
+		stop()
+	}
+
+	if err := srv.Shutdown(context.Background()); err != nil {
+		log.Fatalf("Couldn't start host:: %s\n", err)
+	}
 }
 
 func ConfigureMetrics(reg prometheus.Registerer) *models.Metrics {
