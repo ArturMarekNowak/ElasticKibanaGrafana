@@ -1,6 +1,6 @@
 # ElasticKibanaGrafana
 
-[![Build](https://github.com/ArturMarekNowak/ElasticKibanaGrafanaJaeger/actions/workflows/workflow.yml/badge.svg)](https://github.com/ArturMarekNowak/ElasticKibanaGrafanaJaeger/actions/workflows/workflow.yml/badge.svg) [![Trivy and dockler](https://github.com/ArturMarekNowak/ElasticKibanaGrafanaJaeger/actions/workflows/image-scan.yml/badge.svg)](https://github.com/ArturMarekNowak/ElasticKibanaGrafanaJaeger/actions/workflows/image-scan.yml/badge.svg) [![CodeFactor](https://www.codefactor.io/repository/github/arturmareknowak/elastickibanagrafanajaeger/badge)](https://www.codefactor.io/repository/github/arturmareknowak/elastickibanagrafanajaeger)
+[![Build](https://github.com/ArturMarekNowak/ElasticKibanaGrafana/actions/workflows/workflow.yml/badge.svg)](https://github.com/ArturMarekNowak/ElasticKibanaGrafana/actions/workflows/workflow.yml/badge.svg) [![Trivy and dockler](https://github.com/ArturMarekNowak/ElasticKibanaGrafana/actions/workflows/image-scan.yml/badge.svg)](https://github.com/ArturMarekNowak/ElasticKibanaGrafana/actions/workflows/image-scan.yml/badge.svg) [![CodeFactor](https://www.codefactor.io/repository/github/arturmareknowak/elastickibanagrafana/badge)](https://www.codefactor.io/repository/github/arturmareknowak/elastickibanagrafana)
 
 This project is a PoC of monitoring and metrics gathering in go 
 
